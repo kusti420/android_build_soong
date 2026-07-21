@@ -437,10 +437,13 @@ func (a *aapt) aapt2Flags(ctx android.ModuleContext, sdkContext android.SdkConte
 }
 
 func (a *aapt) deps(ctx android.BottomUpMutatorContext, sdkDep sdkDep) {
-	if sdkDep.frameworkResModule != "" {
+	if sdkDep.frameworkResModule != "" && ctx.ModuleName() != "framework-res" {
 		ctx.AddVariationDependencies(nil, frameworkResTag, sdkDep.frameworkResModule)
 	}
-	if sdkDep.lineageResModule != "" {
+	// IchthysOS/AOSP-17: org.lineageos.platform-res is built with platform_apis (SdkPrivate),
+	// which sets lineageResModule to itself; guard against the self-dependency (mirrors the
+	// framework-res guard above).
+	if sdkDep.lineageResModule != "" && ctx.ModuleName() != "org.lineageos.platform-res" {
 		ctx.AddVariationDependencies(nil, lineageResTag, sdkDep.lineageResModule)
 	}
 }
