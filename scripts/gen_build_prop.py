@@ -29,6 +29,11 @@ def get_build_variant(product_config):
   if product_config["Eng"]:
     return "eng"
   elif product_config["Debuggable"]:
+    # IchthysOS: when PRODUCT_NOT_DEBUGGABLE_IN_USERDEBUG is set, report build
+    # type as "user" in build.prop so DroidGuard's native property checks see a
+    # production build, while keeping the actual userdebug build capabilities.
+    if product_config.get("ProductNotDebuggableInUserdebug", False):
+      return "user"
     return "userdebug"
   else:
     return "user"
@@ -40,6 +45,10 @@ def get_build_flavor(product_config):
   return build_flavor
 
 def get_build_keys(product_config):
+  # IchthysOS: when PRODUCT_NOT_DEBUGGABLE_IN_USERDEBUG is set, always report
+  # release-keys so DroidGuard doesn't flag the build as non-production.
+  if product_config.get("ProductNotDebuggableInUserdebug", False):
+    return "release-keys"
   default_cert = product_config.get("DefaultAppCertificate", "")
   if default_cert == "" or default_cert == os.path.join(TEST_KEY_DIR, "testKey"):
     return "test-keys"
@@ -105,6 +114,12 @@ def parse_args():
   if config["BuildType"] == "debug":
     build_version_tags_list.append("debug")
   build_version_tags_list.append(config["BuildKeys"])
+  # IchthysOS: when spoofing as user build, strip the stale "test-keys" / "dev-keys"
+  # tag that make's BUILD_VERSION_TAGS already contains.  get_build_keys() returned
+  # "release-keys", so keep only that.
+  if config.get("ProductNotDebuggableInUserdebug", False):
+    build_version_tags_list = [t for t in build_version_tags_list
+                               if t not in ("test-keys", "dev-keys")]
   build_version_tags = ",".join(sorted(set(build_version_tags_list)))
   config["BuildVersionTags"] = build_version_tags
 
